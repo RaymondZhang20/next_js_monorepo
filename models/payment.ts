@@ -1,4 +1,4 @@
-import mongoose, { Schema, model, models} from "mongoose";
+import mongoose, { Document, Schema, model, models} from "mongoose";
 
 const PaymentSchema = new Schema({
     payer: {
@@ -11,10 +11,17 @@ const PaymentSchema = new Schema({
     },
     activity: {
         type: String,
-        required: [true, 'Activity is required. '],
     },
 });
 
-const Payment = models.Payment || model('Payment', PaymentSchema);
+interface Payment {
+    payer: string;
+    amount: number;
+    activity?: string;
+}
 
-export default Payment;
+export interface PaymentDocument extends Payment, Document {}
+
+const PaymentModel = models.Payment || model('Payment', PaymentSchema);
+
+export default PaymentModel;

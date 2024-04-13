@@ -49,11 +49,11 @@ export class Money {
 }
 
 export type PaymentT = {
-    _id: string;
-    payer: string;
-    amount: string;
-    activity: string;
-}
+  _id: string;
+  payer: string;
+  amount: string;
+  activity: string;
+};
 
 export class PaymentUtil {
   _id: string;
@@ -61,7 +61,12 @@ export class PaymentUtil {
   amount: Money;
   activity: string;
 
-  constructor(_id = uuidv4(), payer: string, amount: Money = new Money(0), activity: string = "") {
+  constructor(
+    _id = uuidv4(),
+    payer: string,
+    amount: Money = new Money(0),
+    activity: string = ""
+  ) {
     this._id = _id;
     this.payer = payer;
     this.amount = amount;
@@ -73,7 +78,7 @@ export class PaymentUtil {
       _id: payment._id,
       payer: payment.payer,
       amount: payment.amount.toString(),
-      activity: payment.activity
+      activity: payment.activity,
     };
   }
 
@@ -82,7 +87,7 @@ export class PaymentUtil {
       data._id,
       data.payer,
       new Money(Number(data.amount)),
-      data.activity,
+      data.activity
     );
   }
 }
@@ -95,23 +100,23 @@ export enum BillState {
   Error = "Error",
 }
 
-type BillOutcomeT = {
+export type BillOutcomeT = {
   payer: string;
   amount: number;
-}
+};
 
 export type BillT = {
-    _id: string;
-    title: string;
-    initializer: string;
-    requiredPeople: number;
-    reminders: string;
-    payments: PaymentT[];
-    sum: string;
-    state: BillState;
-    createdDate: string;
-    outComes: BillOutcomeT[];
-}
+  _id: string;
+  title: string;
+  initializer: string;
+  requiredPeople: number;
+  reminders: string;
+  payments: PaymentT[];
+  sum: string;
+  state: BillState;
+  createdDate: string;
+  outComes: BillOutcomeT[];
+};
 
 export class BillUtil {
   _id: string;
@@ -129,7 +134,7 @@ export class BillUtil {
     title: string,
     reminders?: string,
     state?: BillState,
-    createdDate: Date = new Date(),
+    createdDate: Date = new Date()
   ) {
     this._id = _id;
     this.title = title;
@@ -146,7 +151,7 @@ export class BillUtil {
       _id: bill._id,
       title: bill.title,
       reminders: bill.reminders,
-      payments: bill.payments.map(payment => PaymentUtil.serialize(payment)),
+      payments: bill.payments.map((payment) => PaymentUtil.serialize(payment)),
       sum: bill.sum.toString(),
       state: bill.state,
       createdDate: bill.createdDate.toISOString(),
@@ -159,20 +164,37 @@ export class BillUtil {
   static deserialize(data: BillT): BillUtil {
     return new BillUtil(
       data._id,
-      data.payments.map((payment: PaymentT) => PaymentUtil.deserialize(payment)),
+      data.payments.map((payment: PaymentT) =>
+        PaymentUtil.deserialize(payment)
+      ),
       data.title,
       data.reminders,
       data.state,
-      new Date(data.createdDate),
+      new Date(data.createdDate)
     );
   }
 
-  static getDistinctPayers(bill:BillT): string[] {
+  static getDistinctPayers(bill: BillT): string[] {
     const distinctPayersSet = new Set<string>();
     bill.payments.forEach((payment) => {
       distinctPayersSet.add(payment.payer);
     });
     return Array.from(distinctPayersSet);
+  }
+
+  static getBreakDown(bill: BillT): BillOutcomeT[] {
+    const distinctPayers = this.getDistinctPayers(bill);
+    const breakdown: BillOutcomeT[] = [];
+
+    distinctPayers.forEach((payer) => {
+      const totalAmount = bill.payments
+        .filter((payment) => payment.payer === payer)
+        .reduce((acc, payment) => acc + Number(payment.amount), 0);
+
+      breakdown.push({ payer, amount: totalAmount });
+    });
+
+    return breakdown;
   }
 
   sumUp(): Money {

@@ -1,4 +1,6 @@
-import { AddIcon } from "@chakra-ui/icons";
+"use client";
+
+import { AddIcon, CheckIcon, WarningIcon } from "@chakra-ui/icons";
 import {
   Box,
   Alert,
@@ -19,27 +21,33 @@ import {
   HStack,
   IconButton,
   Stack,
+  ToastId,
+  useToast,
 } from "@chakra-ui/react";
 import { BillUtil, BillT, PaymentT } from "@utils/BillsUtils";
 import React, { useEffect, useState } from "react";
 import PaymentsForm from "./PaymentsForm";
 import { v4 as uuidv4 } from "uuid";
+import { BeatLoader, DotLoader } from "react-spinners";
 
 type BillInfoModalProps = {
   bill: BillT;
   state: any;
   onClose: () => void;
+  refreshPage: () => void;
 };
 
 const BillInfoModal: React.FC<BillInfoModalProps> = ({
   bill,
   state,
   onClose,
+  refreshPage,
 }) => {
+  const [isSubmitLoading, setIsSubmitLoading] = useState<boolean>(false);
   const [payer, setPayer] = useState<string>("");
   const [updatePayer, setUpdatePayer] = useState<string>("");
   const [newPayerName, setNewPayerName] = useState<string>("");
-  const [payments, setPayments] = useState<PaymentT[]>([...bill.payments]);
+  const [payments, setPayments] = useState<PaymentT[]>(bill.payments);
   const [newState, setNewState] = useState<string>(state);
   const initialHint = () => {
     if (state === "update") {
@@ -71,22 +79,70 @@ const BillInfoModal: React.FC<BillInfoModalProps> = ({
     setHint(initialHint);
   }, [state]);
 
+  const toast = useToast();
+  const toastIdRef = React.useRef<ToastId | undefined>(undefined);
+
+  function updateSubmittingToast(type: string) {
+    let newToast = {};
+    if (type === "success") {
+      newToast = {
+        title: "Update the Bill",
+        description: "The bill has been updated",
+        status: "success",
+        icon: <CheckIcon />,
+        position: "top",
+        duration: 3000,
+        isClosable: true,
+      };
+    } else {
+      newToast = {
+        title: "Update the Bill",
+        description: "Fail to update the bill. \n Error: " + type,
+        status: "error",
+        icon: <WarningIcon />,
+        position: "top",
+        duration: 3000,
+        isClosable: true,
+      };
+    }
+    if (toastIdRef.current) {
+      toast.update(toastIdRef.current, newToast);
+    }
+  }
+
+  function addSubmittingToast() {
+    toastIdRef.current = toast({
+      title: "Update the Bill",
+      description: "We are updating the bill your...",
+      status: "loading",
+      icon: <DotLoader size="30" color="#0303fc" />,
+      position: "top",
+      isClosable: true,
+    });
+  }
+
   const closeMedal = () => {
     setPayer("");
     setNewPayerName("");
-    setPayments(bill.payments);
+    // setPayments(bill.payments);
     onClose();
   };
 
-  const handlePaymentChange = (_id: string, field: keyof PaymentT, value: any) => {
+  const handlePaymentChange = (
+    _id: string,
+    field: keyof PaymentT,
+    value: any
+  ) => {
     const updatedPayments = [...payments];
-    setPayments(updatedPayments.map((payment) => {
+    setPayments(
+      updatedPayments.map((payment) => {
         if (payment._id === _id) {
-            return {...payment, [field]: value};
+          return { ...payment, [field]: value };
         } else {
-            return payment;
+          return payment;
         }
-    }));
+      })
+    );
   };
 
   const handlePaymentOptionChange = (value: string) => {
@@ -107,25 +163,60 @@ const BillInfoModal: React.FC<BillInfoModalProps> = ({
     }
   };
 
-  const handleSubmitUpdatedPayment = () => {
+  const handleSubmitUpdatedPayment = async () => {
+    setIsSubmitLoading(true);
+    addSubmittingToast();
     const changedPayments: PaymentT[] = [];
+    const newPayments: PaymentT[] = [];
     if (payer === "new") {
       payments.forEach((pay) => {
-        if (pay.payer === updatePayer && Number(pay.amount) > 0) changedPayments.push(pay);
-      })
+        if (pay.payer === updatePayer) newPayments.push(pay);
+      });
     } else {
       payments.forEach((pay) => {
-        if (pay.payer === updatePayer && Number(pay.amount) > 0) {
-          const samePayment: PaymentT|undefined = bill.payments.find(p => p._id === pay._id);
+        if (pay.payer === updatePayer) {
+          const samePayment: PaymentT | undefined = bill.payments.find(
+            (p) => p._id === pay._id
+          );
           if (samePayment === undefined) {
-            changedPayments.push(pay);
+            newPayments.push(pay);
           } else {
-            for (const key of Object.keys(samePayment) as Array<keyof PaymentT>) {
+            for (const key of Object.keys(samePayment) as Array<
+              keyof PaymentT
+            >) {
               if (samePayment[key] !== pay[key]) changedPayments.push(pay);
             }
           }
-        };
-      })
+        }
+      });
+    }
+    try {
+      console.log({ changedPayments, newPayments });
+      if (changedPayments.length === 0 && newPayments.length === 0) {
+        throw new Error("There is no payments added or changed");
+      }
+      const response = await fetch(`/api/bills/${bill._id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ changedPayments, newPayments }),
+      });
+
+      if (response.ok) {
+        updateSubmittingToast("success");
+        refreshPage();
+        closeMedal();
+      } else {
+        const errorMessage = await response.text();
+        updateSubmittingToast(errorMessage);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        const errorMessage = error.message;
+        updateSubmittingToast(errorMessage);
+      } else {
+        console.error("An unexpected error occurred:", error);
+      }
+    } finally {
+      setIsSubmitLoading(false);
     }
   };
 
@@ -180,49 +271,75 @@ const BillInfoModal: React.FC<BillInfoModalProps> = ({
           )}
           {(newState === "finalize" || newState === "doubt") &&
             bill.payments.map((payment) => (
-                <PaymentsForm payment={payment} isReadOnly={true} handleChange={handlePaymentChange} />
+              <PaymentsForm
+                payment={payment}
+                isReadOnly={true}
+                handleChange={handlePaymentChange}
+              />
             ))}
           {(newState === "update2" || newState === "update3") &&
             payments
               .filter((payment) => {
-                return payment.payer === ((newState === "update2")?updatePayer:newPayerName);
+                return (
+                  payment.payer ===
+                  (newState === "update2" ? updatePayer : newPayerName)
+                );
               })
               .map((payment, index) => (
-                <PaymentsForm payment={payment} isReadOnly={false} handleChange={handlePaymentChange} />
+                <PaymentsForm
+                  payment={payment}
+                  isReadOnly={false}
+                  handleChange={handlePaymentChange}
+                />
               ))}
           {(newState === "update2" || newState === "update3") && (
-              <HStack alignItems="center">
+            <HStack alignItems="center">
               <IconButton
                 icon={<AddIcon />}
                 aria-label="Add one more Payment"
                 onClick={() => {
-                  setPayments([...payments, {_id: uuidv4(), payer: (newState === "update2")?updatePayer:newPayerName, amount: '0', activity:''}]);
+                  setPayments([
+                    ...payments,
+                    {
+                      _id: uuidv4(),
+                      payer:
+                        newState === "update2" ? updatePayer : newPayerName,
+                      amount: "0",
+                      activity: "",
+                    },
+                  ]);
                 }}
                 mb={4}
                 colorScheme="blue"
               />
-              </HStack>
+            </HStack>
           )}
         </ModalBody>
         <ModalFooter>
-          {newState === "update" && <Button
-            colorScheme="blue"
-            onClick={handleSubmitPayer}
-            isDisabled={
-              (payer === "new" && newPayerName.trim() === "") || payer === ""
-            }
-          >
-            Submit
-          </Button>}
-          {(newState === "update2" || newState === "update3") && <Button
-            colorScheme="blue"
-            onClick={handleSubmitUpdatedPayment}
-            isDisabled={
-              (payer === "new" && newPayerName.trim() === "") || payer === ""
-            }
-          >
-            Submit
-          </Button>}
+          {newState === "update" && (
+            <Button
+              colorScheme="blue"
+              onClick={handleSubmitPayer}
+              isDisabled={
+                (payer === "new" && newPayerName.trim() === "") || payer === ""
+              }
+            >
+              Submit
+            </Button>
+          )}
+          {(newState === "update2" || newState === "update3") && (
+            <Button
+              colorScheme="blue"
+              onClick={handleSubmitUpdatedPayment}
+              isDisabled={
+                (payer === "new" && newPayerName.trim() === "") || payer === ""
+              }
+              isLoading={isSubmitLoading}
+              spinner={<BeatLoader size={8} color="white" />}
+            >
+              Submit
+            </Button>
+          )}
           <Button variant="ghost" ml={3} onClick={closeMedal}>
             Close
           </Button>

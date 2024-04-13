@@ -1,5 +1,5 @@
-import mongoose, { Schema, model, models} from "mongoose";
-import Payment from "./payment";
+import mongoose, { CallbackError, Schema, model, models} from "mongoose";
+import PaymentModel from "./payment";
 
 const BillSchema = new Schema({
     title: {
@@ -20,7 +20,7 @@ const BillSchema = new Schema({
     },
     payments: {
         type: [Schema.Types.ObjectId],
-        ref: Payment,
+        ref: PaymentModel,
         required: [true, 'Payment is required. '],
     },
     state: {
@@ -33,13 +33,13 @@ const BillSchema = new Schema({
     },
     sum: {
         type: Number,
-        required: [true, 'Sum  is required. '],
+        required: [true, 'Sum is required. '],
     },
     outComes: {
         type: [Schema.Types.Mixed],
     },
 });
 
-const Bill = models.Bill || model('Bill', BillSchema);
+const BillModel = models.Bill || model('Bill', BillSchema);
 
-export default Bill;
+export default BillModel;

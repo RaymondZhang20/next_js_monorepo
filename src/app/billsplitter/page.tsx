@@ -12,30 +12,45 @@ import { AddIcon } from "@chakra-ui/icons";
 import React, { useEffect, useState } from "react";
 import { BillT } from "@utils/BillsUtils";
 import BillCard from "@components/BillCard";
+import NewBillModal from "@components/NewBillModal";
+import { CircleLoader } from "react-spinners";
 
 const page = () => {
-  const [isClient, setIsClient] = useState(false);
+  const [refresh, setRefresh] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [modalState, setModalState] = useState(false);
   const [bills, setBills] = useState<BillT[]>([]);
 
   useEffect(() => {
-    setIsClient(true);
     const fetchBills = async () => {
+      setLoading(true);
       try {
         const response = await fetch('/api/bills', {method: 'GET'});
         if (response.ok) {
           const data = await response.json();
-          setBills(data);
+          const sortedData = data.sort((a: any, b: any) => {
+            const dateA = new Date(a.createdDate);
+            const dateB = new Date(b.createdDate);
+            return dateB.getTime() - dateA.getTime();
+          });
+          setBills(sortedData);
         } else {
           throw new Error('Failed to fetch bills');
         }
       } catch (error) {
         console.error('Error fetching bills:', error);
+      } finally {
+        setLoading(false);
       }
     };
     fetchBills();
-  }, []);
+  }, [refresh]);
 
-  const handleAddCard = () => {};
+  const refreshPage = () => {
+    setRefresh(!refresh);
+  }
+
+  // const handleAddCard = () => {};
   return (
     <section className="relative w-full h-1/5 flex-center flex-col ">
       <div className="absolute top-0 w-full h-24 md:h-26 bg-gradient-to-l hover:bg-gradient-to-r from-purple-300 via-indigo-500 to-violet-300"></div>
@@ -62,6 +77,14 @@ const page = () => {
         </h1>
       </div>
       <div className="m-4"></div>
+      {loading && (
+        <div className="fixed inset-0 bg-black opacity-50 z-50"></div>
+      )}
+      {loading && (
+        <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50">
+          <CircleLoader color="#3500ff" size={80} speedMultiplier={0.8} />
+        </div>
+      )}
       <Grid
         templateColumns={{
           base: "1fr",
@@ -74,7 +97,7 @@ const page = () => {
           p={4}
           borderWidth="1px"
           borderRadius="lg"
-          onClick={handleAddCard}
+          // onClick={handleAddCard}
           cursor="pointer"
           justifyContent="center"
           alignItems="center"
@@ -87,6 +110,9 @@ const page = () => {
             fontSize={20}
             colorScheme="teal"
             mb={2}
+            onClick={() => {
+              setModalState(true);
+            }}
           />
           </Center>
           <Center>
@@ -96,10 +122,11 @@ const page = () => {
 
         {bills && bills.map((bill: BillT) => (
           <Flex direction="column">
-            <BillCard bill={bill} />
+            <BillCard refreshPage={refreshPage} bill={bill} />
           </Flex>
         ))}
       </Grid>
+      <NewBillModal state={modalState} refreshPage={refreshPage} onClose={() => setModalState(false)}/>
     </section>
   );
 };

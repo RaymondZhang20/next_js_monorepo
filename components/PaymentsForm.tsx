@@ -1,4 +1,5 @@
-import { CheckIcon } from "@chakra-ui/icons";
+'use client'
+
 import {
   Input,
   Box,
@@ -6,14 +7,13 @@ import {
   FormLabel,
   InputGroup,
   InputLeftElement,
-  InputRightElement,
   NumberInput,
   NumberDecrementStepper,
   NumberIncrementStepper,
   NumberInputField,
   NumberInputStepper,
 } from "@chakra-ui/react";
-import { Money, PaymentUtil, PaymentT } from "@utils/BillsUtils";
+import { PaymentUtil, PaymentT } from "@utils/BillsUtils";
 import React from "react";
 
 type PaymentsFormProps = {

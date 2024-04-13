@@ -1,4 +1,4 @@
-import Bill from "@models/bill";
+import BillModel from "@models/bill";
 import { connectToDB } from "@utils/DataBaseUtils";
 import { NextResponse } from 'next/server'
 
@@ -6,7 +6,7 @@ export async function GET(req: Request, context: any) {
   try {
     await connectToDB()
 
-    const bills = (await Bill.find({}).populate('payments'));
+    const bills = await BillModel.find({}).populate('payments');
 
     return NextResponse.json(bills, { status: 200 });
 } catch (error) {

@@ -1,3 +1,5 @@
+'use client'
+
 import {
   EditIcon,
   CheckIcon,
@@ -10,6 +12,7 @@ import {
   TriangleUpIcon,
 } from "@chakra-ui/icons";
 import {
+  Tag,
   Text,
   Card,
   CardBody,
@@ -33,15 +36,17 @@ import {
   BillUtil,
   PaymentT,
   PaymentUtil,
+  BillOutcomeT,
 } from "@utils/BillsUtils";
 import React, { useState } from "react";
 import BillInfoModal from "./BillInfoModal";
 
 type BillCardProps = {
   bill: BillT;
+  refreshPage: () => void;
 };
 
-const BillCard: React.FC<BillCardProps> = ({ bill }) => {
+const BillCard: React.FC<BillCardProps> = ({ bill, refreshPage }) => {
   const [infoModalSate, setInfoModelState] = useState("close");
   const [showReminders, setShowReminders] = useState(false);
 
@@ -49,18 +54,31 @@ const BillCard: React.FC<BillCardProps> = ({ bill }) => {
     setShowReminders(!showReminders);
   };
 
-  const generateBreakDown = (payments: PaymentT[]) => {
-    return (
-      <span>
-        Break Down:
-        {payments.map((payment, index) => (
-          <React.Fragment key={index}>
-            <br />
-            {payment.payer}: $ {payment.amount}
-          </React.Fragment>
-        ))}
-      </span>
-    );
+  const generateBreakDown = (payments: PaymentT[], showTitle: boolean) => {
+    if (showTitle) {
+      return (
+        <span>
+          Break Down:
+          {BillUtil.getBreakDown(bill).map((breakdown: BillOutcomeT) => (
+            <React.Fragment>
+              <br />
+              {breakdown.payer}: $ {breakdown.amount}
+            </React.Fragment>
+          ))}
+        </span>
+      );
+    } else {
+      return (
+        <span>
+          {BillUtil.getBreakDown(bill).map((breakdown: BillOutcomeT) => (
+            <React.Fragment>
+              <br />
+              {breakdown.payer}: $ {breakdown.amount}
+            </React.Fragment>
+          ))}
+        </span>
+      );
+    }
   };
 
   const setBackGroundColor = (state: BillState) => {
@@ -97,6 +115,8 @@ const BillCard: React.FC<BillCardProps> = ({ bill }) => {
     setInfoModelState;
   };
 
+  const payerLeft = Math.max(0, bill.requiredPeople - BillUtil.getDistinctPayers(bill).length);
+
   const generateButtonGroup = (state: BillState) => {
     switch (state) {
       case "Pending":
@@ -117,6 +137,7 @@ const BillCard: React.FC<BillCardProps> = ({ bill }) => {
                 variant="solid"
                 colorScheme="green"
                 rightIcon={<CheckIcon />}
+                isDisabled={payerLeft>0}
                 onClick={() => {
                   setInfoModelState("finalize");
                 }}
@@ -266,8 +287,8 @@ const BillCard: React.FC<BillCardProps> = ({ bill }) => {
             </Badge>
           </Stack>
           <AvatarGroup size="md" max={5}>
-            {bill.payments.map((payment: PaymentT) => (
-              <Avatar key={payment._id} name={payment.payer} />
+            {BillUtil.getDistinctPayers(bill).map((payer: string) => (
+              <Avatar name={payer} />
             ))}
           </AvatarGroup>
           <Stack mt="3" mb="5" spacing="3">
@@ -277,15 +298,13 @@ const BillCard: React.FC<BillCardProps> = ({ bill }) => {
                   variant="outline"
                   fontSize="1em"
                   colorScheme={
-                    bill.requiredPeople -
-                      BillUtil.getDistinctPayers(bill).length >
+                    payerLeft >
                     0
                       ? "red"
                       : "green"
                   }
                 >
-                  {bill.requiredPeople -
-                    BillUtil.getDistinctPayers(bill).length}{" "}
+                  {payerLeft}{" "}
                   payers left
                 </Badge>
               </Tooltip>
@@ -296,15 +315,21 @@ const BillCard: React.FC<BillCardProps> = ({ bill }) => {
                 colorScheme='blue'
                 size='sm'
                 icon={showReminders ? <TriangleDownIcon /> : <TriangleUpIcon />}
-                aria-label={showReminders ? "Hide comments" : "Show comments"}
+                aria-label={showReminders ? "Hide" : "Show more"}
                 onClick={toggleReminders}
               />
-              <Text ml={2}>{showReminders ? "Hide comments" : "Show comments"}</Text>
+              <Text ml={2}>{showReminders ? "Hide" : "Show more"}</Text>
               </Flex>
               {showReminders && (
-                <Text>{bill.reminders}</Text>
+                <>
+                  <Text whiteSpace="pre-line" fontSize='sm'>{bill.reminders}</Text>
+                  <Flex>
+                    <Tag colorScheme='gray' variant='solid'>Initialized By: {bill.initializer}</Tag>
+                  </Flex>
+                  <Text as='kbd'>{generateBreakDown(bill.payments, false)}</Text>
+                </>
               )}
-            <Tooltip label={generateBreakDown(bill.payments)}>
+            <Tooltip label={generateBreakDown(bill.payments, true)}>
               <Text color="blue.600" fontSize="2xl">
                 $ {bill.sum} CAD
               </Text>
@@ -318,6 +343,7 @@ const BillCard: React.FC<BillCardProps> = ({ bill }) => {
         <CardFooter>{generateButtonGroup(bill.state)}</CardFooter>
       </Card>
       <BillInfoModal
+        refreshPage={refreshPage}
         bill={bill}
         state={infoModalSate}
         onClose={() => {
