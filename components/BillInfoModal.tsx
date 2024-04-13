@@ -1,7 +1,8 @@
 "use client";
 
-import { AddIcon, CheckIcon, WarningIcon } from "@chakra-ui/icons";
+import { AddIcon, ArrowRightIcon, CheckIcon, TriangleDownIcon, TriangleUpIcon, WarningIcon } from "@chakra-ui/icons";
 import {
+  Text,
   Box,
   Alert,
   AlertIcon,
@@ -23,8 +24,13 @@ import {
   Stack,
   ToastId,
   useToast,
+  Table,
+  Tbody,
+  Td,
+  Th,
+  Tr,
 } from "@chakra-ui/react";
-import { BillUtil, BillT, PaymentT } from "@utils/BillsUtils";
+import { BillUtil, BillT, PaymentT, BillState } from "@utils/BillsUtils";
 import React, { useEffect, useState } from "react";
 import PaymentsForm from "./PaymentsForm";
 import { v4 as uuidv4 } from "uuid";
@@ -52,8 +58,8 @@ const BillInfoModal: React.FC<BillInfoModalProps> = ({
   const initialHint = () => {
     if (state === "update") {
       return "please indicate your identity";
-    } else if (state === "doubt") {
-      return "please review the bill info and comfirm";
+    } else if (state === "finalize" || state === "doubt") {
+      return "please review the bill and comfirm";
     } else {
       return "";
     }
@@ -94,6 +100,56 @@ const BillInfoModal: React.FC<BillInfoModalProps> = ({
         duration: 3000,
         isClosable: true,
       };
+    } else if (type === "finalize") {
+      newToast = {
+        title: "Finalize the Bill",
+        description: "The bill has been finalized",
+        status: "success",
+        icon: <CheckIcon />,
+        position: "top",
+        duration: 3000,
+        isClosable: true,
+      };
+    } else if (type === "doubt") {
+      newToast = {
+        title: "Doubt the Bill",
+        description: "The bill has been doubted, you can update it now",
+        status: "success",
+        icon: <CheckIcon />,
+        position: "top",
+        duration: 3000,
+        isClosable: true,
+      };
+    } else if (type === "archive") {
+      newToast = {
+        title: "Archive the Bill",
+        description: "The bill has been archived",
+        status: "success",
+        icon: <CheckIcon />,
+        position: "top",
+        duration: 3000,
+        isClosable: true,
+      };
+    } else if (type === "reload") {
+      newToast = {
+        title: "Reload the Bill",
+        description: "The bill has been resent to pending state",
+        status: "success",
+        icon: <CheckIcon />,
+        position: "top",
+        duration: 3000,
+        isClosable: true,
+      };
+    } else if (type === "delete") {
+      newToast = {
+        title: "Delete the Bill",
+        description: "The bill has been deleted",
+        status: "success",
+        icon: <CheckIcon />,
+        position: "top",
+        duration: 3000,
+        isClosable: true,
+      };
     } else {
       newToast = {
         title: "Update the Bill",
@@ -124,7 +180,6 @@ const BillInfoModal: React.FC<BillInfoModalProps> = ({
   const closeMedal = () => {
     setPayer("");
     setNewPayerName("");
-    // setPayments(bill.payments);
     onClose();
   };
 
@@ -191,7 +246,6 @@ const BillInfoModal: React.FC<BillInfoModalProps> = ({
       });
     }
     try {
-      console.log({ changedPayments, newPayments });
       if (changedPayments.length === 0 && newPayments.length === 0) {
         throw new Error("There is no payments added or changed");
       }
@@ -220,6 +274,45 @@ const BillInfoModal: React.FC<BillInfoModalProps> = ({
     }
   };
 
+  const handleUpdateBillState = async () => {
+    setIsSubmitLoading(true);
+    addSubmittingToast();
+    try {
+      let data = {state: BillState.Pending};
+      if (newState === "finalize") {
+        data.state = BillState.Done;
+      } else if (newState === "doubt") {
+        data.state = BillState.Doubtful;
+      } else if (newState === "archive") {
+        data.state = BillState.Archived;
+      } else if (newState === "reload") {
+        data.state = BillState.Pending;
+      }
+      const response = await fetch(`/api/bills/${bill._id}`, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      });
+
+      if (response.ok) {
+        updateSubmittingToast(newState);
+        refreshPage();
+        closeMedal();
+      } else {
+        const errorMessage = await response.text();
+        updateSubmittingToast(errorMessage);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        const errorMessage = error.message;
+        updateSubmittingToast("An error ocurred when try to connect to server: " + errorMessage);
+      } else {
+        console.error("An unexpected error occurred:", error);
+      }
+    } finally {
+      setIsSubmitLoading(false);
+    }
+  };
+
   return (
     <Modal isOpen={newState !== "close"} onClose={closeMedal}>
       <ModalOverlay />
@@ -229,7 +322,9 @@ const BillInfoModal: React.FC<BillInfoModalProps> = ({
           newState === "update3") && <ModalHeader>Update Bill</ModalHeader>}
         {newState === "finalize" && <ModalHeader>Finalize Bill</ModalHeader>}
         {newState === "doubt" && <ModalHeader>Doubt Bill</ModalHeader>}
-        {newState === "view" && <ModalHeader>View Bill</ModalHeader>}
+        {newState === "archive" && <ModalHeader>Archive Bill</ModalHeader>}
+        {newState === "reload" && <ModalHeader>Reload Bill</ModalHeader>}
+        {newState === "view" && <ModalHeader>View Transactions</ModalHeader>}
         <ModalCloseButton />
         {hint !== "" && (
           <Alert status="error" mb={4}>
@@ -237,7 +332,7 @@ const BillInfoModal: React.FC<BillInfoModalProps> = ({
             {hint}
           </Alert>
         )}
-        <ModalBody>
+        <ModalBody maxHeight="450px" overflowY="auto">
           {newState === "update" && (
             <Box>
               <RadioGroup
@@ -314,6 +409,41 @@ const BillInfoModal: React.FC<BillInfoModalProps> = ({
               />
             </HStack>
           )}
+          {newState === "view" && 
+          <Table variant="simple">
+          <Tbody>
+            <Tr>
+              <Th fontSize="xl" fontWeight="bold">From</Th>
+              <Th fontSize="xl" fontWeight="bold">To</Th>
+              <Th fontSize="xl" fontWeight="bold">Amount</Th>
+            </Tr>
+            {bill.outComes.map((transaction, index) => (
+              <Tr key={index}>
+                <Td>{transaction.from}</Td>
+                {/* <Td>
+                  <ArrowRightIcon mx={2} />
+                </Td> */}
+                <Td>
+                  <Text>{transaction.to}</Text>
+                </Td>
+                <Td>${transaction.amount}</Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+        }
+        {newState === "archive" &&
+          <Text>Do you want to Archive this bill?</Text>
+        }
+        {newState === "reload" &&
+          <Text>Do you want to Reload this bill?</Text>
+        }
+        {newState === "delete" &&
+          <HStack>
+            <Text>Please enter the admin credential to delete the bill</Text>
+            <Input></Input>
+          </HStack>
+        }
         </ModalBody>
         <ModalFooter>
           {newState === "update" && (
@@ -338,6 +468,26 @@ const BillInfoModal: React.FC<BillInfoModalProps> = ({
               spinner={<BeatLoader size={8} color="white" />}
             >
               Submit
+            </Button>
+          )}
+          {(newState === "finalize" || newState === "doubt" || newState === "archive" || newState === "reload") && (
+            <Button
+              colorScheme="blue"
+              onClick={handleUpdateBillState}
+              isLoading={isSubmitLoading}
+              spinner={<BeatLoader size={8} color="white" />}
+            >
+              Comfirm
+            </Button>
+          )}
+          {(newState === "delete") && (
+            <Button
+              colorScheme="red"
+              // onClick={handleUpdateBillState}
+              isLoading={isSubmitLoading}
+              spinner={<BeatLoader size={8} color="white" />}
+            >
+              Delete
             </Button>
           )}
           <Button variant="ghost" ml={3} onClick={closeMedal}>

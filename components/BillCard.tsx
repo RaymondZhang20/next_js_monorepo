@@ -151,6 +151,9 @@ const BillCard: React.FC<BillCardProps> = ({ bill, refreshPage }) => {
               mt={2}
               ml={2}
               rightIcon={<ViewOffIcon />}
+              onClick={() => {
+                setInfoModelState("archive");
+              }}
             >
               Archive
             </Button>
@@ -187,6 +190,9 @@ const BillCard: React.FC<BillCardProps> = ({ bill, refreshPage }) => {
               mt={2}
               ml={2}
               rightIcon={<ViewOffIcon />}
+              onClick={() => {
+                setInfoModelState("archive");
+              }}
             >
               Archive
             </Button>
@@ -200,6 +206,9 @@ const BillCard: React.FC<BillCardProps> = ({ bill, refreshPage }) => {
                 variant="solid"
                 colorScheme="blue"
                 rightIcon={<RepeatClockIcon />}
+                onClick={() => {
+                  setInfoModelState("reload");
+                }}
               >
                 Reload
               </Button>
@@ -244,6 +253,9 @@ const BillCard: React.FC<BillCardProps> = ({ bill, refreshPage }) => {
               mt={2}
               ml={2}
               rightIcon={<ViewOffIcon />}
+              onClick={() => {
+                setInfoModelState("archive");
+              }}
             >
               Archive
             </Button>

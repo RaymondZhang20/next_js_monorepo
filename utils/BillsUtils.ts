@@ -1,3 +1,5 @@
+import { BillDocument } from "@models/bill";
+import PaymentModel from "@models/payment";
 import { v4 as uuidv4 } from "uuid";
 
 export class Money {
@@ -105,6 +107,12 @@ export type BillOutcomeT = {
   amount: number;
 };
 
+export type BillResultT = {
+  to: string;
+  from: string;
+  amount: number;
+};
+
 export type BillT = {
   _id: string;
   title: string;
@@ -115,7 +123,7 @@ export type BillT = {
   sum: string;
   state: BillState;
   createdDate: string;
-  outComes: BillOutcomeT[];
+  outComes: BillResultT[];
 };
 
 export class BillUtil {
@@ -174,27 +182,68 @@ export class BillUtil {
     );
   }
 
-  static getDistinctPayers(bill: BillT): string[] {
+  static getDistinctPayers(bill: any): string[] {
     const distinctPayersSet = new Set<string>();
-    bill.payments.forEach((payment) => {
+    bill.payments.forEach((payment: any) => {
       distinctPayersSet.add(payment.payer);
     });
     return Array.from(distinctPayersSet);
   }
 
-  static getBreakDown(bill: BillT): BillOutcomeT[] {
+  static getBreakDown(bill: any): BillOutcomeT[] {
     const distinctPayers = this.getDistinctPayers(bill);
     const breakdown: BillOutcomeT[] = [];
 
     distinctPayers.forEach((payer) => {
-      const totalAmount = bill.payments
-        .filter((payment) => payment.payer === payer)
-        .reduce((acc, payment) => acc + Number(payment.amount), 0);
+      const totalAmount: Money = bill.payments
+        .filter((payment: any) => payment.payer === payer)
+        .reduce(
+          (acc: Money, payment: any) =>
+            acc.add(new Money(Number(payment.amount))),
+          new Money(0)
+        );
 
-      breakdown.push({ payer, amount: totalAmount });
+      breakdown.push({ payer, amount: totalAmount.getAmountInDollars() });
     });
 
     return breakdown;
+  }
+
+  static computeResult(bill: any): any {
+    const breakdown: BillOutcomeT[] = BillUtil.getBreakDown(bill);
+    const averageAmount = new Money(bill.sum).divide(breakdown.length);
+    const differences = breakdown.map((payer) => new Money(payer.amount).subtract(averageAmount).getAmountInDollars());
+    let sortedPayers = breakdown
+      .map((payer, index) => ({ ...payer, difference: differences[index] }))
+      .sort((a, b) => a.difference - b.difference);
+    const transactions: BillResultT[] = [];
+    let right = sortedPayers.length - 1;
+    while (0 < right || transactions.length>breakdown.length) {
+      const fromPayer = sortedPayers[0];
+      const toPayer = sortedPayers[right];
+      const amountToTransfer = Math.min(
+        -fromPayer.difference,
+        toPayer.difference
+      );
+        transactions.push({
+          from: fromPayer.payer,
+          to: toPayer.payer,
+          amount: amountToTransfer,
+        });
+        fromPayer.difference = new Money(fromPayer.difference).add(new Money(amountToTransfer)).getAmountInDollars();
+        toPayer.difference = new Money(toPayer.difference).subtract(new Money(amountToTransfer)).getAmountInDollars();;
+        if (fromPayer.difference === 0) {
+          sortedPayers.splice(0, 1);
+          right--;
+        }
+        if (toPayer.difference === 0) {
+          sortedPayers.splice(right,1);
+          right--;
+        }
+      sortedPayers = sortedPayers
+        .sort((a, b) => a.difference - b.difference);
+    }
+    return transactions;
   }
 
   sumUp(): Money {

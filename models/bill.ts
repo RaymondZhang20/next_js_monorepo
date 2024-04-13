@@ -1,5 +1,6 @@
-import mongoose, { CallbackError, Schema, model, models} from "mongoose";
-import PaymentModel from "./payment";
+import mongoose, { Document, Schema, model, models} from "mongoose";
+import PaymentModel, { PaymentDocument } from "./payment";
+import { BillOutcomeT, BillState } from "@utils/BillsUtils";
 
 const BillSchema = new Schema({
     title: {
@@ -39,6 +40,18 @@ const BillSchema = new Schema({
         type: [Schema.Types.Mixed],
     },
 });
+
+export interface BillDocument extends Document {
+    title: string;
+    initializer: string;
+    requiredPeople: number;
+    reminders: string;
+    payments: Schema.Types.ObjectId[] | PaymentDocument[];
+    state: BillState;
+    createdDate: Date;
+    sum: number;
+    outComes: BillOutcomeT[];
+}
 
 const BillModel = models.Bill || model('Bill', BillSchema);
 
