@@ -120,8 +120,8 @@ const Page = () => {
           </Center>
         </Box>
 
-        {bills && bills.map((bill: BillT) => (
-          <Flex direction="column">
+        {bills && bills.map((bill: BillT, index) => (
+          <Flex direction="column" key={index}>
             <BillCard refreshPage={refreshPage} bill={bill} />
           </Flex>
         ))}
