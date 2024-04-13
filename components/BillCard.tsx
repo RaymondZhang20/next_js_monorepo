@@ -59,8 +59,8 @@ const BillCard: React.FC<BillCardProps> = ({ bill, refreshPage }) => {
       return (
         <span>
           Break Down:
-          {BillUtil.getBreakDown(bill).map((breakdown: BillOutcomeT) => (
-            <React.Fragment>
+          {BillUtil.getBreakDown(bill).map((breakdown: BillOutcomeT, index) => (
+            <React.Fragment key={index}>
               <br />
               {breakdown.payer}: $ {breakdown.amount}
             </React.Fragment>
@@ -70,8 +70,8 @@ const BillCard: React.FC<BillCardProps> = ({ bill, refreshPage }) => {
     } else {
       return (
         <span>
-          {BillUtil.getBreakDown(bill).map((breakdown: BillOutcomeT) => (
-            <React.Fragment>
+          {BillUtil.getBreakDown(bill).map((breakdown: BillOutcomeT, index) => (
+            <React.Fragment key={index}>
               <br />
               {breakdown.payer}: $ {breakdown.amount}
             </React.Fragment>
@@ -299,8 +299,8 @@ const BillCard: React.FC<BillCardProps> = ({ bill, refreshPage }) => {
             </Badge>
           </Stack>
           <AvatarGroup size="md" max={5}>
-            {BillUtil.getDistinctPayers(bill).map((payer: string) => (
-              <Avatar name={payer} />
+            {BillUtil.getDistinctPayers(bill).map((payer: string, index) => (
+              <Avatar key={index} name={payer} />
             ))}
           </AvatarGroup>
           <Stack mt="3" mb="5" spacing="3">

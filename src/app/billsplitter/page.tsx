@@ -15,7 +15,7 @@ import BillCard from "@components/BillCard";
 import NewBillModal from "@components/NewBillModal";
 import { CircleLoader } from "react-spinners";
 
-const page = () => {
+const Page = () => {
   const [refresh, setRefresh] = useState(false);
   const [loading, setLoading] = useState(false);
   const [modalState, setModalState] = useState(false);
@@ -131,4 +131,4 @@ const page = () => {
   );
 };
 
-export default page;
+export default Page;

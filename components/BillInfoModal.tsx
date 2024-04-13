@@ -339,8 +339,8 @@ const BillInfoModal: React.FC<BillInfoModalProps> = ({
                 defaultValue="modify"
                 onChange={handlePaymentOptionChange}
               >
-                {BillUtil.getDistinctPayers(bill).map((payer) => (
-                  <Flex>
+                {BillUtil.getDistinctPayers(bill).map((payer, index) => (
+                  <Flex key={index}>
                     <Radio size="lg" ml={3} mb={2} value={payer}>
                       I am {payer}
                     </Radio>
@@ -365,8 +365,8 @@ const BillInfoModal: React.FC<BillInfoModalProps> = ({
             </Box>
           )}
           {(newState === "finalize" || newState === "doubt") &&
-            bill.payments.map((payment) => (
-              <PaymentsForm
+            bill.payments.map((payment, index) => (
+              <PaymentsForm key={index}
                 payment={payment}
                 isReadOnly={true}
                 handleChange={handlePaymentChange}
@@ -381,7 +381,7 @@ const BillInfoModal: React.FC<BillInfoModalProps> = ({
                 );
               })
               .map((payment, index) => (
-                <PaymentsForm
+                <PaymentsForm key={index}
                   payment={payment}
                   isReadOnly={false}
                   handleChange={handlePaymentChange}
