@@ -10,7 +10,7 @@ import {
 } from "@chakra-ui/react";
 import { AddIcon } from "@chakra-ui/icons";
 import React, { useEffect, useState } from "react";
-import { BillT } from "@utils/BillsUtils";
+import { BillState, BillT } from "@utils/BillsUtils";
 import BillCard from "@components/BillCard";
 import NewBillModal from "@components/NewBillModal";
 import { CircleLoader } from "react-spinners";
@@ -31,8 +31,16 @@ const Page = () => {
           const sortedData = data.sort((a: any, b: any) => {
             const dateA = new Date(a.createdDate);
             const dateB = new Date(b.createdDate);
-            return dateB.getTime() - dateA.getTime();
-          });
+            if (a.state === BillState.Archived && b.state === BillState.Archived) {
+              return dateB.getTime() - dateA.getTime();
+          } else if (a.state === BillState.Archived) {
+              return 1;
+          } else if (b.state === BillState.Archived) {
+              return -1;
+          } else {
+              return dateB.getTime() - dateA.getTime();
+          }
+        });
           setBills(sortedData);
         } else {
           throw new Error('Failed to fetch bills');
