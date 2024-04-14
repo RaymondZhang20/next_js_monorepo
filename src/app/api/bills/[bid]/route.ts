@@ -4,7 +4,6 @@ import PaymentModel, { PaymentDocument } from "@models/payment";
 import { BillT, BillUtil, Money, PaymentT } from "@utils/BillsUtils";
 import { connectToDB } from "@utils/DataBaseUtils";
 import { NextResponse } from "next/server";
-import { comment } from "postcss";
 
 export const GET = async (req: Request, { params }: any) => {
     try {
